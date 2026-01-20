@@ -23,7 +23,7 @@ def read_item(item_id: int, q: Optional[str] = None):
     return {"item_id": item_id, "q": q}
 
 @app.get("/copilot/{query}")
-def return_ans(query: str)
+def return_ans(query: str):
     text = await fetch_text("https://ease-int.com/")
     return {"response": text}
 

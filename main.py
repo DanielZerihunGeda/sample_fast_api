@@ -1,7 +1,6 @@
 from typing import Optional
 
 from fastapi import FastAPI
-import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 
@@ -19,11 +18,12 @@ async def root():
     return {"message": "Hello World"}
 
 @app.get("/items/{item_id}")
-def read_item(item_id: int, q: Optional[str] = None):
+async def read_item(item_id: int, q: Optional[str] = None):
     return {"item_id": item_id, "q": q}
 
 @app.get("/copilot/{query}")
-def return_ans(query: str):
+async def return_ans(query: str):
     text = await fetch_text("https://ease-int.com/")
     return {"response": text}
+
 

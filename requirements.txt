@@ -1,4 +1,4 @@
 fastapi[all]
-beautifulsoup4
-requests
-aiohttp
+qdrant-client
+pydantic
+pydantic-settings

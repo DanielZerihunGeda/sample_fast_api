@@ -21,9 +21,13 @@ async def root():
 async def read_item(item_id: int, q: Optional[str] = None):
     return {"item_id": item_id, "q": q}
 
+sammp = """EASE - Landmarks of TomorrowHomeAboutProjectsServicesContactHomeAboutProjectsServicesContactEngineering Solutions 
+for TomorrowSolving East Africa's most complex construction challenges through innovative problem-solving"""
+
+
 @app.get("/copilot/{query}")
 async def return_ans(query: str):
     text = await fetch_text("https://ease-int.com/")
-    return {"response": text}
+    return {"response": sammp}
 
 

@@ -1,80 +1,44 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from fastapi import FastAPI
 from pydantic import BaseModel, Field
+from typing import List
 from qdrant_client import QdrantClient
-from typing import List, Optional
-import json
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 class Settings(BaseSettings):
     url: str
     api_key: str
     collection_name: str
+    google_api_key: str
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="allow",
-    )
-
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="allow")
 
 settings = Settings()
 
-client = QdrantClient(
-    url=settings.url,
-    api_key=settings.api_key,
+client = QdrantClient(url=settings.url, api_key=settings.api_key)
+
+embedding_model = GoogleGenerativeAIEmbeddings(
+    google_api_key=settings.google_api_key,
+    model="gemini-embedding-001"
 )
 
-
 class EmbeddingRequest(BaseModel):
-    embedding: str = Field(..., description='JSON string like "[0.1, -0.2, 0.3]"')
-
+    query: str = Field(..., description="Query string for similarity search")
 
 class ContextResponse(BaseModel):
     response: List[str]
 
-
 @app.post("/context", response_model=ContextResponse)
-async def retrieve_context(request: EmbeddingRequest):
-    # 1) Parse JSON string -> Python list
-    try:
-        embedding = json.loads(request.embedding)
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=400,
-            detail="embedding must be a JSON-encoded array of numbers",
-        )
+async def retrieve_context(req: EmbeddingRequest):
+    embedding = embedding_model.embed_query(req.query)
 
-    # 2) Validate list content before sending to Qdrant
-    if not isinstance(embedding, list) or len(embedding) == 0:
-        raise HTTPException(status_code=400, detail="embedding must be a non-empty array")
-
-    if any(x is None for x in embedding):
-        raise HTTPException(status_code=400, detail="embedding must not contain null values")
-
-    try:
-        embedding = [float(x) for x in embedding]
-    except (TypeError, ValueError):
-        raise HTTPException(status_code=400, detail="embedding must contain only numbers")
-
-    # 3) Query Qdrant
     pts = client.query_points(
         collection_name=settings.collection_name,
         query=embedding,
         limit=3,
     )
 
-    # 4) Build response
     context = [point.payload.get("content", "") for point in pts.points]
     return {"response": context}

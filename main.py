@@ -4,8 +4,17 @@ from typing import List
 from qdrant_client import QdrantClient
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware( 
+    CORSMiddleware, 
+    allow_origins=["*"], 
+    allow_credentials=True, 
+    allow_methods=["*"], 
+    allow_headers=["*"], 
+)
 
 class Settings(BaseSettings):
     url: str

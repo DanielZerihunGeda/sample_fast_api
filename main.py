@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
 from typing import List
-
+import json
 
 app = FastAPI()
 

@@ -2,3 +2,4 @@ fastapi[all]
 qdrant-client
 pydantic
 pydantic-settings
+langchain-google-genai

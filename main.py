@@ -3,9 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import BaseModel, Field
 from qdrant_client import QdrantClient
-from typing import List
-import json
 from typing import List, Optional
+import json
 
 app = FastAPI()
 
@@ -16,6 +15,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 class Settings(BaseSettings):
     url: str
@@ -28,12 +28,14 @@ class Settings(BaseSettings):
         extra="allow",
     )
 
+
 settings = Settings()
 
 client = QdrantClient(
     url=settings.url,
-    api_key=settings.api_key
+    api_key=settings.api_key,
 )
+
 
 class EmbeddingRequest(BaseModel):
     embedding: str = Field(..., description='JSON string like "[0.1, -0.2, 0.3]"')
@@ -45,17 +47,17 @@ class ContextResponse(BaseModel):
 
 @app.post("/context", response_model=ContextResponse)
 async def retrieve_context(request: EmbeddingRequest):
+    # 1) Parse JSON string -> Python list
     try:
         embedding = json.loads(request.embedding)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="embedding must be a JSON-encoded array of numbers")
+        raise HTTPException(
+            status_code=400,
+            detail="embedding must be a JSON-encoded array of numbers",
+        )
 
-    pts = client.query_points(
-        collection_name=settings.collection_name,
-        query=embedding,
-        limit=3,
-    )
-     if not isinstance(embedding, list) or len(embedding) == 0:
+    # 2) Validate list content before sending to Qdrant
+    if not isinstance(embedding, list) or len(embedding) == 0:
         raise HTTPException(status_code=400, detail="embedding must be a non-empty array")
 
     if any(x is None for x in embedding):
@@ -66,9 +68,13 @@ async def retrieve_context(request: EmbeddingRequest):
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="embedding must contain only numbers")
 
-    context = [
-        point.payload.get("content", "")
-        for point in pts.points
-    ]
+    # 3) Query Qdrant
+    pts = client.query_points(
+        collection_name=settings.collection_name,
+        query=embedding,
+        limit=3,
+    )
 
+    # 4) Build response
+    context = [point.payload.get("content", "") for point in pts.points]
     return {"response": context}
